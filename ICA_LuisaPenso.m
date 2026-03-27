@@ -12,8 +12,8 @@
 basePath = '/Users/luisapenso/Library/CloudStorage/OneDrive-UniversitatdeBarcelona/Luisa Maria Valencia Torres''s files - SGTon';
 addpath('/Users/luisapenso/Applications/eeglab2025.1.0')
 eeglab
+close all
 
-SubArray = [1 2 4 5 6 7 8 14];
 
 % Analysis_folder = fullfile(basePath,'SGTon','SCAN EEG');
 
@@ -22,13 +22,26 @@ SubArray = [1 2 4 5 6 7 8 14];
 %ElectrodesTab = fullfile(basePath, 'SGTon', 'SCAN EEG', 'PREP_Reports','Electr.mat');
 
 % Luisa Penso paths
+% EDIT: added _ ica_folder. Check if it exists, if not create it.
 Analysis_folder = fullfile(basePath,'SCAN EEG');
+ica_folder = fullfile(basePath, 'SCAN EEG', 'ICA_w');
+if ~exist(ica_folder, 'dir'), mkdir(ica_folder); end
 ElectrodesTab = fullfile(basePath, 'SCAN EEG', 'PREP_Reports', 'Electr.mat');
 
-load(ElectrodesTab)
+% EDIT: added these lines to create a log file for the ICA process. It will append info for each subject.
+logFile = fullfile(ica_folder,'ICA_log.txt');
+fid = fopen(logFile,'a');
+% EDIT: added  initial info to the log file
+fprintf(fid,'\n===================================');
+fprintf(fid,'\n%s',datestr(now));
+fprintf(fid,'\nPREPROCESSING PIPELINE\n');
+
+
+SubArray = [1 2 4 5 6 7 8 9 10 11 12 14 15 16 17 18 19 21 22 24 25 27 28 30 32 33 34 35] %3 missing
 
 %%
 for iSub = 1:length(SubArray)
+    load(ElectrodesTab)
 
     subj = sprintf('%02d', SubArray(iSub));
 
