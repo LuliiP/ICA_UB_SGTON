@@ -23,7 +23,7 @@ close all
 
 % Luisa Penso paths
 % EDIT: added _ ica_folder. Check if it exists, if not create it.
-Analysis_folder = fullfile(basePath,'SCAN EEG');
+Analysis_folder = fullfile(basePath, 'SCAN EEG');
 ica_folder = fullfile(basePath, 'SCAN EEG', 'ICA_w');
 if ~exist(ica_folder, 'dir'), mkdir(ica_folder); end
 ElectrodesTab = fullfile(basePath, 'SCAN EEG', 'PREP_Reports', 'Electr.mat');
@@ -36,7 +36,6 @@ fprintf(fid,'\n===================================');
 fprintf(fid,'\n%s',datestr(now));
 fprintf(fid,'\nPREPROCESSING PIPELINE\n');
 
-
 SubArray = [1 2 4 5 6 7 8 9 10 11 12 14 15 16 17 18 19 21 22 24 25 27 28 30 32 33 34 35] %3 missing
 
 %%
@@ -45,9 +44,12 @@ for iSub = 1:length(SubArray)
 
     subj = sprintf('%02d', SubArray(iSub));
 
-    % Load cleaned continuous rawName = [ subj 'raw68.set'];
+    % Load cleaned continuous 
+    rawName = [ subj 'raw68.set'];
 
-    EEG = pop_loadset([subj 'raw68.set'], Analysis_folder);
+
+    EEG = pop_loadset('filename', rawName, 'filepath', Analysis_folder); %EEG = pop_loadset([rawName, Analysis_folder);
+    %EEG = pop_loadset([subj 'raw68.set'], Analysis_folder);
     orig_chanlocs = EEG.chanlocs;
 
     % Identify subject row
@@ -163,26 +165,52 @@ for iSub = 1:length(SubArray)
     % RUN ICLABEL
 
 
-    EEG = iclabel(EEG);
+    %EEG = iclabel(EEG);
+    %EEG = eeg_checkset(EEG);
 
-    EEG = eeg_checkset(EEG);
-
-
-    nIC = size(EEG.icaweights,1);              % number of ICs actually available
-    fprintf('Number of ICs available: %d\n', nIC);
-
-    pop_viewprops(EEG, 0, 1:nIC);              % show only valid ICs
+    %nIC = size(EEG.icaweights,1);              % number of ICs actually available
+    %fprintf('Number of ICs available: %d\n', nIC);
+    %pop_viewprops(EEG, 0, 1:nIC);              % show only valid ICs
     % MANUAL IC REJECTION
+    
+    EEG = pop_iclabel(EEG, 'default');
+    ICclass  = EEG.etc.ic_classification.ICLabel.classifications;
+    IClabels = EEG.etc.ic_classification.ICLabel.classes;
+    
+    idxEye = find(strcmpi(IClabels, 'Eye'));
+    idxMus = find(strcmpi(IClabels, 'Muscle'));
+    idxBrn = find(strcmpi(IClabels, 'Brain'));
 
-    nIC = size(EEG.icaweights,1);
-    fprintf('Number of ICs available: %d\n', nIC);
+    % Umbrales para sugerencias
+    thr_eye    = 0.60;
+    thr_muscle = 0.80;
+    
+    candidateICs = find( ...
+        (ICclass(:,idxEye) >= thr_eye | ...
+         ICclass(:,idxMus) >= thr_muscle) & ...
+         ICclass(:,idxBrn) < 0.50 );
 
-    badICs_str = input('Enter ICs to reject ([]=none): ','s'); % like this [1 4 5]
+    fprintf('\n--- Automatic Suggestions ---\n');
+    fprintf('Eye >= %.2f | Muscle >= %.2f | Brain < 0.50\n', thr_eye, thr_muscle);
+    fprintf('Suggested ICs to reject: %s\n', mat2str(candidateICs'));
+
+    % Visualization 
+    pop_eegplot(EEG, 0, 1, 1); 
+    fprintf('Look the different componets overtime...\n');
+
+    % Manual input
+    nIC = size(EEG.icaweights, 1);
+    %EDIT: 2 removed/changed lines:
+    %fprintf('Number of ICs available: %d\n', nIC);
+    %badICs_str = input('Enter ICs to reject ([]=none): ','s'); % like this [1 4 5]
+    badICs_str = input('Enter ICs to reject (like  [1 4 5] o []): ', 's');
 
     if ~isempty(badICs_str)
         badICs = str2num(badICs_str); %#ok<ST2NM>
-        badICs = badICs(badICs >= 1 & badICs <= nIC);   % keep only valid ICs
+        badICs = badICs(badICs >= 1 & badICs <= nIC);   
+        % keep only valid ICs
 
+        % Apply rejection
         EEG = pop_subcomp(EEG, badICs, 0);
         fprintf('Rejected ICs: %s\n', mat2str(badICs));
     else
@@ -268,10 +296,12 @@ for iSub = 1:length(SubArray)
 
     % SAVE FINAL file
     fileName = [subj '_ALLCOND_trimmed.set'];
-    rawName = [ subj 'raw68.set'];
     finalName = [subj '_ICAclean_full.set'];
+    save(ElectrodesTab, 'Clean');
+    fprintf('Table "Clean" updated and saved for subject %s\n', subj);
 
-
+    %removed line:
+    %rawName = [ subj 'raw68.set'];
 
     % Build the comment block
     myCommentBlock = [ ...
@@ -310,5 +340,7 @@ for iSub = 1:length(SubArray)
     fprintf('Saved final ICA-cleaned dataset: %s\n', finalName);
 
 end
+
+fclose(fid)
 
 % check the file !!

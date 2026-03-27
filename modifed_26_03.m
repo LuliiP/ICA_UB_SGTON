@@ -172,7 +172,8 @@ EEG = pop_iclabel(EEG, 'default');
     
     if ~isempty(badICs_str)
         badICs = str2num(badICs_str); %#ok<ST2NM>
-        badICs = badICs(badICs >= 1 & badICs <= nIC); % Validación de rango
+        badICs = badICs(badICs >= 1 & badICs <= nIC); 
+        % Validación de rango
         
         % Aplicar rechazo
         EEG = pop_subcomp(EEG, badICs, 0);
@@ -181,7 +182,6 @@ EEG = pop_iclabel(EEG, 'default');
         badICs = [];
         fprintf('No ICs rejected\n');
     end
-
 
     %  SAVE ICA INFO
 
